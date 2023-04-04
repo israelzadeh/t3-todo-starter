@@ -11,10 +11,26 @@ import {
   Typography,
 } from "@mui/material";
 import { useState } from "react";
+import { api } from "../utils/api";
 
 export default function Todos() {
   const [todo, setTodo] = useState<string>("");
-  const [todos, setTodos] = useState<string[]>([]);
+
+  const listTodos = api.todo.list.useQuery();
+
+  const todos = listTodos.data;
+
+  const createTodoMutation = api.todo.create.useMutation({
+    onSuccess: (newTodo) => {
+      todos?.push(newTodo);
+    },
+  });
+
+  const deleteTodoMutation = api.todo.delete.useMutation({
+    onSuccess: () => {
+      void listTodos.refetch();
+    },
+  });
 
   return (
     <Stack spacing={3} width={400}>
@@ -26,22 +42,22 @@ export default function Todos() {
         onKeyPress={(e) => {
           if (e.key === "Enter") {
             setTodo("");
-            setTodos([...todos, todo]);
+            createTodoMutation.mutate({ title: todo });
           }
         }}
       />
       <Divider />
       <Stack spacing={1}>
         <List>
-          {todos.map((todo, index) => (
-            <ListItem key={index}>
-              <ListItemText primary={todo} />
+          {todos?.map((todo) => (
+            <ListItem key={todo.id}>
+              <ListItemText primary={todo.title} />
               <ListItemSecondaryAction>
                 <IconButton
                   color="error"
                   edge="end"
                   aria-label="delete"
-                  onClick={() => setTodos(todos.filter((_, i) => i !== index))}
+                  onClick={() => deleteTodoMutation.mutate({ id: todo.id })}
                 >
                   <DeleteIcon />
                 </IconButton>
@@ -50,7 +66,7 @@ export default function Todos() {
           ))}
         </List>
 
-        {todos.length === 0 && (
+        {todos?.length === 0 && (
           <Typography variant="body2" color="textSecondary">
             No todos yet
           </Typography>
@@ -58,7 +74,7 @@ export default function Todos() {
 
         <Divider />
 
-        {todos.length > 0 && (
+        {todos?.length && (
           <Typography variant="body2" color="textSecondary">
             {todos.length} todos
           </Typography>
